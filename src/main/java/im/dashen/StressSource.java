@@ -77,7 +77,7 @@ public class StressSource extends AbstractPollableSource implements Configurable
         if ((maxTotalEvents >= 0 && totalEventSent >= maxTotalEvents) ||
                 (maxSuccessfulEvents >= 0 && counterGroup.get("events.successful") >= maxSuccessfulEvents)) {
             if (hasStopSent) {
-                logger.info("Elapsed: {} ms", System.currentTimeMillis() - startTime);
+                logger.info("Elapsed time: {} ms", System.currentTimeMillis() - startTime);
                 hasStopSent = false;
             }
             return Status.BACKOFF;
