@@ -83,7 +83,8 @@ public class CustomizeStressSource extends AbstractPollableSource implements Con
         if ((maxTotalEvents >= 0 && totalEventSent >= maxTotalEvents) ||
                 (maxSuccessfulEvents >= 0 && counterGroup.get("events.successful") >= maxSuccessfulEvents)) {
             if (hasStopSent) {
-                logger.info("Elapsed time: {} ms", System.currentTimeMillis() - startTime);
+                logger.info("========================Elapsed time=================================: {} ms",
+                        System.currentTimeMillis() - startTime);
                 hasStopSent = false;
             }
             return Status.BACKOFF;
@@ -116,11 +117,11 @@ public class CustomizeStressSource extends AbstractPollableSource implements Con
 
     @Override
     protected void doStart() throws FlumeException {
-        logger.info("Stress source doStart finished");
+        logger.info("Customized stress source doStart finished");
     }
 
     @Override
     protected void doStop() throws FlumeException {
-        logger.info("Stress source do stop. Metrics:{}", counterGroup);
+        logger.info("Customized stress source do stop. Metrics:{}", counterGroup);
     }
 }
