@@ -3,6 +3,7 @@ package im.dashen;
 import com.google.common.base.Preconditions;
 import org.apache.flume.*;
 import org.apache.flume.conf.Configurable;
+import org.apache.flume.conf.ConfigurationException;
 import org.apache.flume.event.EventBuilder;
 import org.apache.flume.source.AbstractPollableSource;
 import org.slf4j.Logger;
@@ -13,23 +14,21 @@ import java.util.ArrayList;
 import java.util.List;
 
 
-public class StressSource extends AbstractPollableSource implements Configurable {
-    private static final Logger logger = LoggerFactory.getLogger(StressSource.class);
+public class CustomizeStressSource extends AbstractPollableSource implements Configurable {
+    private static final Logger logger = LoggerFactory.getLogger(CustomizeStressSource.class);
 
     private CounterGroup counterGroup;
-    private byte[] content;
     private long maxTotalEvents;
     private long maxSuccessfulEvents;
     private int batchSize;
     private long lastSent = 0;
     private Event event;
     private List<Event> eventBatchList;
-    private List<Event> eventBatchListToProcess;
 
     private Long startTime;
     private Boolean hasStopSent = true;
 
-    public StressSource() {
+    public CustomizeStressSource() {
         counterGroup = new CounterGroup();
         startTime = System.currentTimeMillis();
     }
@@ -41,24 +40,31 @@ public class StressSource extends AbstractPollableSource implements Configurable
         batchSize = context.getInteger("batchSize", 1);
         String eventContent = context.getString("eventContent");
         Preconditions.checkState(eventContent != null, "Missing params: eventContent");
-        prepEventData(eventContent);
+        try {
+            prepEventData(eventContent);
+        } catch (IOException e) {
+            throw new ConfigurationException("Prepare event error: ", e);
+        }
     }
 
-    private void prepEventData(String eventContent) {
-        try {
-            BufferedInputStream in = new BufferedInputStream(new FileInputStream(eventContent));
-            ByteArrayOutputStream bos = new ByteArrayOutputStream();
-            byte[] buf = new byte[1024];
-            int size = 0;
-            while ((size = in.read(buf)) != -1) {
-                bos.write(buf, 0, size);
-            }
-            content = bos.toByteArray();
-            in.close();
-            bos.close();
-        } catch (Exception e) {
-            logger.error("Can not read file: {}", eventContent);
+    private void prepEventData(String eventContent) throws IOException {
+        File f = new File(eventContent);
+        if (!f.exists()) {
+            throw new FileNotFoundException("File not found: " + f);
         }
+        if (!f.canRead()) {
+            throw new IOException("Insufficient permissions to read file: " + f);
+        }
+        BufferedInputStream in = new BufferedInputStream(new FileInputStream(eventContent));
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        byte[] buf = new byte[1024];
+        int size = 0;
+        while ((size = in.read(buf)) != -1) {
+            bos.write(buf, 0, size);
+        }
+        byte[] content = bos.toByteArray();
+        in.close();
+        bos.close();
 
         if (batchSize > 1) {
             eventBatchList = new ArrayList<>();
@@ -90,6 +96,7 @@ public class StressSource extends AbstractPollableSource implements Configurable
             } else {
                 long eventsLeft = maxTotalEvents - totalEventSent;
 
+                List<Event> eventBatchListToProcess;
                 if (maxTotalEvents >= 0 && eventsLeft < batchSize) {
                     eventBatchListToProcess = eventBatchList.subList(0, (int) eventsLeft);
                 } else {
